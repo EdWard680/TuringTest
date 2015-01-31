@@ -2,35 +2,31 @@
 
 using namespace std;
 
-Loggable::FAIL_COMMAND currentTooHigh(double cur)
-{
-	stringstream curString;
-	curString<<cur;
-	Logger::LogState("POWERDISTRIBUTIONPANEL", LEVEL_t::ALERT, string("Current level too high: ")+curString.str()+" amps");
-	return Loggable::KILL;
-}
-
 class Turing: public IterativeRobot
 {
 private:
 	PowerDistributionPanel PDP;
+	CANTalon tal1, tal2, tal3;
+	CANTalon *tals;
 
 public:
-	Turing()
+	Turing(): tal1(1), tal2(2), tal3(3), tals(&tal1)
 	{
-		/*TODO: Have Dash Thread poll Log thread for most recent data
-		 * Write function in ValueLog which returns most previous val
-		 */
-		/*for(int i = 0; i <= 15; i++)
+		for(int i = 0; i <= 15; i++)
 		{
 			auto f = Logger::MakeLogValue<double>("PowerDistributionPanel", Logger::MakeComponentName("current", i).c_str(), std::bind(&PowerDistributionPanel::GetCurrent, &PDP, i));
 			SmartDashService::GetInstance().addLog<double>(f, Logger::MakeComponentName("pdp_current", i));
-		}*/
+		}
 
+		for(int i = 0; i < 3; i++)
+		{
+			tals[i].SetVoltageRampRate(5.0);
+			auto f = Logger::MakeLogValue(Logger::MakeComponentName("power_level", i+1).c_str(), tals+i, &CANTalon::Get);
+			SmartDashService::GetInstance().addLog(f, Logger::MakeComponentName("tal_powerlevel_", i+1));
+		}
 
 		auto volt = Logger::MakeLogValue("VOLTAGE", &PDP, &PowerDistributionPanel::GetVoltage);
 		SmartDashService::GetInstance().addLog<double>(volt, "pdp_voltage");
-
 
 		Logger::LogState("GENERAL", LEVEL_t::INFO, "Turing object constructed");
 		Logger::LogState("GENERAL", LEVEL_t::NOTICE, string("Built: ")+__DATE__+' '+__TIME__);
